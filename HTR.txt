@@ -1,0 +1,7 @@
+.\.venv\Scripts\Activate.ps1
+
+First Step
+
+uvicorn main:app --reload
+
+Second Step

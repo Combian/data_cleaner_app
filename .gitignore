@@ -1,0 +1,21 @@
+# --- Virtual environment ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.ipynb_checkpoints/
+
+# --- OS / editor cruft ---
+.DS_Store
+__MACOSX/
+.vscode/
+.idea/
+
+# --- Environment variables (if you add a .env later) ---
+.env

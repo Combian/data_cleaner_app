@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Cleaner</title>
+<script>
+  (function () {
+    var saved = localStorage.getItem("theme");
+    var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="app">
+
+  <div id="error-banner" class="error-banner hidden">
+    <span id="error-banner-text"></span>
+    <button id="error-banner-close">✕</button>
+  </div>
+
+  <div class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="1" y="1" width="28" height="28" rx="6" stroke="var(--gold)" stroke-width="1.5"/>
+        <path d="M1 11H29M1 20H29M11 1V29M20 1V29" stroke="var(--gold)" stroke-width="1" opacity="0.55"/>
+      </svg>
+      <div>
+        <h1>Data<span>Cleaner</span></h1>
+        <p>upload → inspect → clean → export. Nothing leaves your machine.</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="live-readout" id="live-readout">no file loaded</div>
+      <button class="theme-toggle" id="theme-toggle">Theme</button>
+    </div>
+  </div>
+
+  <section class="panel" id="upload-panel">
+    <h2><span class="step-badge">1</span>Upload</h2>
+    <div class="dropzone" id="dropzone">
+      <strong>Drop a CSV, XLS, or XLSX file here</strong>
+      <p>or click to browse</p>
+      <input type="file" id="file-input" accept=".csv,.xls,.xlsx">
+    </div>
+    <div class="action-row hidden" id="sheet-row" style="margin-top:14px;">
+      <label for="sheet-select">Sheet</label>
+      <select id="sheet-select"></select>
+      <button class="primary" id="load-btn">Load file</button>
+    </div>
+    <p class="muted" id="upload-status"></p>
+  </section>
+
+  <div id="main-panel" class="hidden">
+
+    <section class="panel">
+      <h2><span class="step-badge">2</span>Data preview</h2>
+      <div class="action-row">
+        <label>Show</label>
+        <select id="preview-rows-select">
+          <option>10</option><option>25</option><option>50</option><option>100</option>
+        </select>
+        <select id="preview-direction">
+          <option value="false">First rows</option>
+          <option value="true">Last rows</option>
+        </select>
+        <button id="refresh-preview-btn">Refresh</button>
+      </div>
+      <div class="table-scroll"><table id="preview-table"></table></div>
+    </section>
+
+    <section class="panel">
+      <h2><span class="step-badge">3</span>Columns at a glance</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Column</th><th>Type</th><th>Missing</th><th>Whitespace</th><th>Unique</th><th>Outliers</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="column-table-body"></tbody>
+        </table>
+      </div>
+      <p class="muted" id="duplicate-rows-note" style="margin-top:10px;"></p>
+    </section>
+
+    <section class="panel hidden" id="action-panel-section">
+      <h2><span class="step-badge">4</span>Clean "<span id="action-column-name"></span>"</h2>
+      <div id="action-panel-body"></div>
+    </section>
+
+    <details class="panel">
+      <summary><h2><span class="step-badge">5</span>Whole-dataset actions</h2></summary>
+      <div class="details-body">
+        <div class="action-row">
+          <button class="primary" id="quick-clean-btn">Quick Clean (trim whitespace + remove exact duplicates)</button>
+        </div>
+
+        <div class="row-split">
+          <div>
+            <div class="action-row">
+              <label>Remove duplicate rows, keep</label>
+              <select id="dup-keep"><option value="first">first</option><option value="last">last</option></select>
+              <button id="dup-preview-btn">Preview</button>
+            </div>
+          </div>
+          <div>
+            <div class="action-row">
+              <label>Find</label>
+              <input type="text" id="fr-find" placeholder="value to find">
+              <label>Replace with</label>
+              <input type="text" id="fr-replace" placeholder="replacement">
+              <button id="fr-preview-btn">Preview</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="row-split">
+          <div>
+            <div class="action-row">
+              <label>Filter</label>
+              <select id="filter-column"></select>
+              <select id="filter-operator">
+                <option value="==">=</option><option value="!=">≠</option>
+                <option value=">">&gt;</option><option value=">=">&gt;=</option>
+                <option value="<">&lt;</option><option value="<=">&lt;=</option>
+                <option value="contains">contains</option>
+              </select>
+              <input type="text" id="filter-value" placeholder="value">
+              <button id="filter-preview-btn">Preview</button>
+            </div>
+          </div>
+          <div>
+            <div class="action-row">
+              <label>Sort by</label>
+              <select id="sort-column"></select>
+              <select id="sort-direction"><option value="true">Ascending</option><option value="false">Descending</option></select>
+              <button id="sort-preview-btn">Preview</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="hidden" id="generic-preview-area">
+          <p class="muted" id="generic-preview-summary"></p>
+          <div class="table-scroll"><table id="generic-preview-table"></table></div>
+          <div class="action-row" style="margin-top:10px;">
+            <button class="success" id="generic-apply-btn">Apply</button>
+            <button id="generic-discard-btn">Discard</button>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="panel">
+      <summary><h2><span class="step-badge">6</span>Cleaning history</h2></summary>
+      <div class="details-body">
+        <p class="muted">Preview any earlier step, or restore straight to it — not limited to undoing one step at a time.</p>
+        <ul class="history-list" id="history-list"></ul>
+        <div class="action-row" style="margin-top:12px;">
+          <button id="undo-btn">Undo last step</button>
+          <button class="danger" id="reset-btn">Reset to original</button>
+        </div>
+      </div>
+    </details>
+
+    <section class="panel">
+      <h2><span class="step-badge">7</span>Export</h2>
+      <div class="action-row">
+        <label>Filename</label>
+        <input type="text" id="export-filename" value="cleaned_data">
+        <select id="export-format"><option value="csv">CSV</option><option value="xlsx">XLSX</option></select>
+        <button class="primary" id="download-btn">Download cleaned file</button>
+      </div>
+      <p class="muted">The original uploaded file is never modified.</p>
+    </section>
+
+  </div>
+</div>
+
+<script src="/static/script.js"></script>
+</body>
+</html>
